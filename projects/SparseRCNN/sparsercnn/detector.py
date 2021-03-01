@@ -17,7 +17,7 @@ from detectron2.layers import ShapeSpec
 from detectron2.modeling import META_ARCH_REGISTRY, build_backbone, detector_postprocess
 from detectron2.modeling.roi_heads import build_roi_heads, build_mask_head
 
-from detectron2.structures import Boxes, ImageList, Instances
+from detectron2.structures import Boxes, ImageList, Instances, pairwise_iou
 from detectron2.utils.logger import log_first_n
 from fvcore.nn import giou_loss, smooth_l1_loss
 
