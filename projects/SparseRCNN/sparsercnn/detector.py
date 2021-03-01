@@ -166,6 +166,12 @@ class SparseRCNN(nn.Module):
 
         # Prediction.
         outputs_class, outputs_coord, bboxes = self.head(features, proposal_boxes, self.init_proposal_features.weight)
+        list_boxes = []
+
+        #TODO #3 mask forward
+        for boxes_per_image in bboxes:
+            list_boxes.append(Boxes(bboxes_pre_image))
+
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
 
         #TODO #3 mask forward
