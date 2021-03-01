@@ -23,6 +23,7 @@ from detectron2.data import MetadataCatalog, build_detection_train_loader
 from detectron2.engine import AutogradProfiler, DefaultTrainer, default_argument_parser, default_setup, launch
 from detectron2.evaluation import COCOEvaluator, verify_results
 from detectron2.solver.build import maybe_add_gradient_clipping
+from detectron2.data.datasets import register_coco_instances
 
 from sparsercnn import SparseRCNNDatasetMapper, add_sparsercnn_config
 
@@ -106,6 +107,11 @@ def setup(args):
     cfg = get_cfg()
     add_sparsercnn_config(cfg)
     cfg.merge_from_file(args.config_file)
+    cfg.DATASETS.TRAIN = ("bdd100k_train",)
+    cfg.DATASETS.TEST = ("bdd100k_test",)
+    cfg.SOLVER.CHECKPOINT_PERIOD = 500
+    cfg.TEST.EVAL_PERIOD = 500
+    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
@@ -114,6 +120,9 @@ def setup(args):
 
 def main(args):
     cfg = setup(args)
+
+    register_coco_instances("bdd100k_train", {}, "/shared/xudongliu/bdd100k/labels/ins_seg/ins_seg_train.json", "/shared/xudongliu/bdd100k/10k/train")
+    register_coco_instances("bdd100k_test", {}, "/shared/xudongliu/bdd100k/labels/ins_seg/ins_seg_val.json", "/shared/xudongliu/bdd100k/10k/val")
 
     if args.eval_only:
         model = Trainer.build_model(cfg)
