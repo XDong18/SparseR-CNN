@@ -63,7 +63,7 @@ class SparseRCNN(nn.Module):
         self.head = DynamicHead(cfg=cfg, roi_input_shape=self.backbone.output_shape())
 
         # TODO #2 mask head
-        self.mask_pooler, self.mask_head = self._init_mask_head(cfg, roi_input_shape=self.backbone.output_shape())
+        self.mask_pooler, self.mask_head = self._init_mask_head(cfg, input_shape=self.backbone.output_shape())
         self.proposal_append_gt = cfg.MODEL.ROI_HEADS.PROPOSAL_APPEND_GT
 
         # Loss parameters:
