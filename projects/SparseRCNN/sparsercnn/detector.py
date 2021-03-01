@@ -351,7 +351,9 @@ class SparseRCNN(nn.Module):
         # convergence and empirically improves box AP on COCO by about 0.5
         # points (under one tested configuration).
         if self.proposal_append_gt:
-            proposals = add_ground_truth_to_proposals(gt_boxes, proposals)
+            # TODO Question if I need to add it
+            # proposals = add_ground_truth_to_proposals(gt_boxes, proposals)
+            pass
 
         proposals_with_gt = []
 
