@@ -30,6 +30,7 @@ from .util.misc import (NestedTensor, nested_tensor_from_tensor_list,
 from detectron2.modeling.roi_heads.roi_heads import select_foreground_proposals
 from detectron2.modeling.poolers import ROIPooler
 from detectron2.modeling.proposal_generator.proposal_utils import add_ground_truth_to_proposals
+from detectron2.modeling.matcher import Matcher
 __all__ = ["SparseRCNN"]
 
 
@@ -66,6 +67,11 @@ class SparseRCNN(nn.Module):
         # TODO #2 mask head
         self.mask_pooler, self.mask_head = self._init_mask_head(cfg, input_shape=self.backbone.output_shape())
         self.proposal_append_gt = cfg.MODEL.ROI_HEADS.PROPOSAL_APPEND_GT
+        self.proposal_matcher = Matcher(
+                cfg.MODEL.ROI_HEADS.IOU_THRESHOLDS,
+                cfg.MODEL.ROI_HEADS.IOU_LABELS,
+                allow_low_quality_matches=False,
+            )
 
         # Loss parameters:
         class_weight = cfg.MODEL.SparseRCNN.CLASS_WEIGHT
