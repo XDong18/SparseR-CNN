@@ -384,7 +384,8 @@ class SparseRCNN(nn.Module):
             # We index all the attributes of targets that start with "gt_"
             # and have not been added to proposals yet (="gt_classes").
             if has_gt:
-                sampled_targets = matched_idxs[sampled_idxs]
+                sampled_targets = matched_idxs
+                # sampled_targets = matched_idxs[sampled_idxs]
                 # NOTE: here the indexing waste some compute, because heads
                 # like masks, keypoints, etc, will filter the proposals again,
                 # (by foreground/background, or number of keypoints in the image, etc)
@@ -394,7 +395,7 @@ class SparseRCNN(nn.Module):
                         proposals_per_image.set(trg_name, trg_value[sampled_targets])
             else:
                 gt_boxes = Boxes(
-                    targets_per_image.gt_boxes.tensor.new_zeros((len(sampled_idxs), 4))
+                    targets_per_image.gt_boxes.tensor.new_zeros((len(sampled_targets), 4))
                 )
                 proposals_per_image.gt_boxes = gt_boxes
 
