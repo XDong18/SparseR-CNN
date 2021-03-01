@@ -189,7 +189,7 @@ class SparseRCNN(nn.Module):
             #TODO #3 mask forward
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
             proposals_gt = self.label_and_sample_proposals(proposal_list_instances, gt_instances)
-            instances_fg, _ = select_foreground_proposals(instances, self.num_classes)
+            instances_fg, _ = select_foreground_proposals(proposals_gt, self.num_classes)
             
             targets = self.prepare_targets(gt_instances)
             if self.deep_supervision:
