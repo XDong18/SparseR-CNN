@@ -169,8 +169,8 @@ class SparseRCNN(nn.Module):
         list_boxes = []
 
         #TODO #3 mask forward
-        for boxes_per_image in bboxes:
-            list_boxes.append(Boxes(bboxes_pre_image))
+        for bboxes_per_image in bboxes:
+            list_boxes.append(Boxes(bboxes_per_image))
 
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
 
