@@ -175,7 +175,7 @@ class SparseRCNN(nn.Module):
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
 
         #TODO #3 mask forward
-        mask_features = self.mask_pooler(features, bboxes)
+        mask_features = self.mask_pooler(features, list_boxes)
         proposal_list_instances = self.boxes2list_instances(bboxes, images.image_sizes)
 
         if self.training:
