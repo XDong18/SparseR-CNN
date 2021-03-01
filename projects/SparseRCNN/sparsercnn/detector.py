@@ -369,12 +369,16 @@ class SparseRCNN(nn.Module):
                 targets_per_image.gt_boxes, proposals_per_image.proposal_boxes
             )
             matched_idxs, matched_labels = self.proposal_matcher(match_quality_matrix)
-            sampled_idxs, gt_classes = self._sample_proposals(
-                matched_idxs, matched_labels, targets_per_image.gt_classes
-            )
+            # sampled_idxs = matched_idxs
+            gt_classes = targets_per_image.gt_classes[matched_idxs]
+            gt_classes[matched_labels == 0] = self.num_classes
+            gt_classes[matched_labels == -1] = -1
+            # sampled_idxs, gt_classes = self._sample_proposals(
+            #     matched_idxs, matched_labels, targets_per_image.gt_classes
+            # )
 
             # Set target attributes of the sampled proposals:
-            proposals_per_image = proposals_per_image[sampled_idxs]
+            # proposals_per_image = proposals_per_image[sampled_idxs]
             proposals_per_image.gt_classes = gt_classes
 
             # We index all the attributes of targets that start with "gt_"
