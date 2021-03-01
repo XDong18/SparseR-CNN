@@ -110,7 +110,7 @@ class SparseRCNNDatasetMapper:
         if "annotations" in dataset_dict:
             # USER: Modify this if you want to keep them for some reason.
             for anno in dataset_dict["annotations"]:
-                anno.pop("segmentation", None)
+                # anno.pop("segmentation", None) # TODO #1 keep segmentation annotation
                 anno.pop("keypoints", None)
 
             # USER: Implement additional transformations if you have other types of data

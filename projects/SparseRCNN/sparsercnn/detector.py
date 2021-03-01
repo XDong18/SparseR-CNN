@@ -15,7 +15,7 @@ from torch import nn
 
 from detectron2.layers import ShapeSpec
 from detectron2.modeling import META_ARCH_REGISTRY, build_backbone, detector_postprocess
-from detectron2.modeling.roi_heads import build_roi_heads
+from detectron2.modeling.roi_heads import build_roi_heads, build_mask_head
 
 from detectron2.structures import Boxes, ImageList, Instances
 from detectron2.utils.logger import log_first_n
@@ -27,6 +27,7 @@ from .util.box_ops import box_cxcywh_to_xyxy, box_xyxy_to_cxcywh
 from .util.misc import (NestedTensor, nested_tensor_from_tensor_list,
                        accuracy, get_world_size, interpolate,
                        is_dist_avail_and_initialized)
+from detectron2.modeling.roi_heads.roi_heads import select_foreground_proposals
 
 __all__ = ["SparseRCNN"]
 
@@ -61,10 +62,15 @@ class SparseRCNN(nn.Module):
         # Build Dynamic Head.
         self.head = DynamicHead(cfg=cfg, roi_input_shape=self.backbone.output_shape())
 
+        # TODO #2 mask head
+        self.mask_pooler, self.mask_head = self._init_mask_head(cfg, roi_input_shape=self.backbone.output_shape())
+        self.proposal_append_gt = cfg.MODEL.ROI_HEADS.PROPOSAL_APPEND_GT
+
         # Loss parameters:
         class_weight = cfg.MODEL.SparseRCNN.CLASS_WEIGHT
         giou_weight = cfg.MODEL.SparseRCNN.GIOU_WEIGHT
         l1_weight = cfg.MODEL.SparseRCNN.L1_WEIGHT
+        mask_weight = cfg.MODEL.SparseRCNN.MASK_WEIGHT
         no_object_weight = cfg.MODEL.SparseRCNN.NO_OBJECT_WEIGHT
         self.deep_supervision = cfg.MODEL.SparseRCNN.DEEP_SUPERVISION
         self.use_focal = cfg.MODEL.SparseRCNN.USE_FOCAL
@@ -75,7 +81,7 @@ class SparseRCNN(nn.Module):
                                    cost_bbox=l1_weight, 
                                    cost_giou=giou_weight,
                                    use_focal=self.use_focal)
-        weight_dict = {"loss_ce": class_weight, "loss_bbox": l1_weight, "loss_giou": giou_weight}
+        weight_dict = {"loss_ce": class_weight, "loss_bbox": l1_weight, "loss_giou": giou_weight, "loss_mask": mask_weight}
         if self.deep_supervision:
             aux_weight_dict = {}
             for i in range(self.num_heads - 1):
@@ -97,6 +103,34 @@ class SparseRCNN(nn.Module):
         self.normalizer = lambda x: (x - pixel_mean) / pixel_std
         self.to(self.device)
 
+    @staticmethod
+    def _init_mask_head(cfg, input_shape):
+        pooler_resolution = cfg.MODEL.ROI_MASK_HEAD.POOLER_RESOLUTION
+        pooler_scales     = tuple(1.0 / input_shape[k].stride for k in in_features)
+        sampling_ratio    = cfg.MODEL.ROI_MASK_HEAD.POOLER_SAMPLING_RATIO
+        pooler_type       = cfg.MODEL.ROI_MASK_HEAD.POOLER_TYPE
+
+        in_channels = [input_shape[f].channels for f in in_features][0]
+
+        mask_pooler = (
+            ROIPooler(
+                output_size=pooler_resolution,
+                scales=pooler_scales,
+                sampling_ratio=sampling_ratio,
+                pooler_type=pooler_type,
+            )
+            if pooler_type
+            else None
+        )
+
+        if pooler_type:
+            shape = ShapeSpec(
+                channels=in_channels, width=pooler_resolution, height=pooler_resolution
+            )
+        else:
+            shape = {f: input_shape[f] for f in in_features}
+        
+        return mask_pooler, build_mask_head(cfg, shape)
 
     def forward(self, batched_inputs):
         """
@@ -127,20 +161,32 @@ class SparseRCNN(nn.Module):
         # Prepare Proposals.
         proposal_boxes = self.init_proposal_boxes.weight.clone()
         proposal_boxes = box_cxcywh_to_xyxy(proposal_boxes)
-        proposal_boxes = proposal_boxes[None] * images_whwh[:, None, :]
+        proposal_boxes = proposal_boxes[None] * images_whwh[:, None, :] # proposal size: absolute size, x1y1, x2y2
 
         # Prediction.
-        outputs_class, outputs_coord = self.head(features, proposal_boxes, self.init_proposal_features.weight)
+        outputs_class, outputs_coord, bboxes = self.head(features, proposal_boxes, self.init_proposal_features.weight)
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
 
+        #TODO #3 mask forward
+        mask_features = self.mask_pooler(features, bboxes)
+        proposal_list_instances = self.boxes2list_instances(bboxes, images.image_sizes)
+
         if self.training:
+            #TODO #3 mask forward
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
+            proposals_gt = self.label_and_sample_proposals(proposal_list_instances, gt_instances)
+            instances_fg, _ = select_foreground_proposals(instances, self.num_classes)
+            
             targets = self.prepare_targets(gt_instances)
             if self.deep_supervision:
                 output['aux_outputs'] = [{'pred_logits': a, 'pred_boxes': b}
                                          for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
 
-            loss_dict = self.criterion(output, targets)
+            loss_dict, match_indices = self.criterion(output, targets)
+
+            #TODO #4 mask loss update
+            loss_dict.update(self.mask_head(mask_features, instances_fg))
+
             weight_dict = self.criterion.weight_dict
             for k in loss_dict.keys():
                 if k in weight_dict:
@@ -151,6 +197,8 @@ class SparseRCNN(nn.Module):
             box_cls = output["pred_logits"]
             box_pred = output["pred_boxes"]
             results = self.inference(box_cls, box_pred, images.image_sizes)
+            #TODO #5 mask inference
+            self.mask_head(mask_features, results)
 
             processed_results = []
             for results_per_image, input_per_image, image_size in zip(results, batched_inputs, images.image_sizes):
@@ -245,3 +293,92 @@ class SparseRCNN(nn.Module):
         images_whwh = torch.stack(images_whwh)
 
         return images, images_whwh
+    
+    def boxes2list_instances(self, bboxes, image_sizes):
+        results = []
+        for bboxes_pre_image, image_size in zip(bboxes, image_sizes):
+            res = Instances(image_size)
+            res.proposal_boxes = Boxes(bboxes_pre_image)
+            results.appedn(res)
+        
+        return results
+    
+    @torch.no_grad()
+    def label_and_sample_proposals(
+        self, proposals: List[Instances], targets: List[Instances]
+    ) -> List[Instances]:
+        """
+        Prepare some proposals to be used to train the ROI heads.
+        It performs box matching between `proposals` and `targets`, and assigns
+        training labels to the proposals.
+        It returns ``self.batch_size_per_image`` random samples from proposals and groundtruth
+        boxes, with a fraction of positives that is no larger than
+        ``self.positive_fraction``.
+
+        Args:
+            See :meth:`ROIHeads.forward`
+
+        Returns:
+            list[Instances]:
+                length `N` list of `Instances`s containing the proposals
+                sampled for training. Each `Instances` has the following fields:
+
+                - proposal_boxes: the proposal boxes
+                - gt_boxes: the ground-truth box that the proposal is assigned to
+                  (this is only meaningful if the proposal has a label > 0; if label = 0
+                  then the ground-truth box is random)
+
+                Other fields such as "gt_classes", "gt_masks", that's included in `targets`.
+        """
+        gt_boxes = [x.gt_boxes for x in targets]
+        # Augment proposals with ground-truth boxes.
+        # In the case of learned proposals (e.g., RPN), when training starts
+        # the proposals will be low quality due to random initialization.
+        # It's possible that none of these initial
+        # proposals have high enough overlap with the gt objects to be used
+        # as positive examples for the second stage components (box head,
+        # cls head, mask head). Adding the gt boxes to the set of proposals
+        # ensures that the second stage components will have some positive
+        # examples from the start of training. For RPN, this augmentation improves
+        # convergence and empirically improves box AP on COCO by about 0.5
+        # points (under one tested configuration).
+        if self.proposal_append_gt:
+            proposals = add_ground_truth_to_proposals(gt_boxes, proposals)
+
+        proposals_with_gt = []
+
+        for proposals_per_image, targets_per_image in zip(proposals, targets):
+            has_gt = len(targets_per_image) > 0
+            match_quality_matrix = pairwise_iou(
+                targets_per_image.gt_boxes, proposals_per_image.proposal_boxes
+            )
+            matched_idxs, matched_labels = self.proposal_matcher(match_quality_matrix)
+            sampled_idxs, gt_classes = self._sample_proposals(
+                matched_idxs, matched_labels, targets_per_image.gt_classes
+            )
+
+            # Set target attributes of the sampled proposals:
+            proposals_per_image = proposals_per_image[sampled_idxs]
+            proposals_per_image.gt_classes = gt_classes
+
+            # We index all the attributes of targets that start with "gt_"
+            # and have not been added to proposals yet (="gt_classes").
+            if has_gt:
+                sampled_targets = matched_idxs[sampled_idxs]
+                # NOTE: here the indexing waste some compute, because heads
+                # like masks, keypoints, etc, will filter the proposals again,
+                # (by foreground/background, or number of keypoints in the image, etc)
+                # so we essentially index the data twice.
+                for (trg_name, trg_value) in targets_per_image.get_fields().items():
+                    if trg_name.startswith("gt_") and not proposals_per_image.has(trg_name):
+                        proposals_per_image.set(trg_name, trg_value[sampled_targets])
+            else:
+                gt_boxes = Boxes(
+                    targets_per_image.gt_boxes.tensor.new_zeros((len(sampled_idxs), 4))
+                )
+                proposals_per_image.gt_boxes = gt_boxes
+
+            proposals_with_gt.append(proposals_per_image)
+
+        return proposals_with_gt
+    
