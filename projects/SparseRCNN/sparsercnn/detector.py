@@ -28,7 +28,7 @@ from .util.misc import (NestedTensor, nested_tensor_from_tensor_list,
                        accuracy, get_world_size, interpolate,
                        is_dist_avail_and_initialized)
 from detectron2.modeling.roi_heads.roi_heads import select_foreground_proposals
-
+from detectron2.modeling.poolers import ROIPooler
 __all__ = ["SparseRCNN"]
 
 
