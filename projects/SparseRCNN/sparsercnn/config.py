@@ -12,7 +12,7 @@ def add_sparsercnn_config(cfg):
     Add config for SparseRCNN.
     """
     cfg.MODEL.SparseRCNN = CN()
-    cfg.MODEL.SparseRCNN.NUM_CLASSES = 80
+    cfg.MODEL.SparseRCNN.NUM_CLASSES = 8
     cfg.MODEL.SparseRCNN.NUM_PROPOSALS = 300
 
     # RCNN Head.

@@ -50,7 +50,7 @@ def mask_rcnn_loss(pred_mask_logits: torch.Tensor, instances: List[Instances], v
     cls_agnostic_mask = pred_mask_logits.size(1) == 1
     total_num_masks = pred_mask_logits.size(0)
     mask_side_len = pred_mask_logits.size(2)
-    print(pred_mask_logits.size(), '\n!!! pin')
+    # print(pred_mask_logits.size(), '\n!!! pin')
     assert pred_mask_logits.size(2) == pred_mask_logits.size(3), "Mask prediction must be square!"
 
     gt_classes = []
