@@ -306,7 +306,7 @@ class SparseRCNN(nn.Module):
         for bboxes_pre_image, image_size in zip(bboxes, image_sizes):
             res = Instances(image_size)
             res.proposal_boxes = Boxes(bboxes_pre_image)
-            results.appedn(res)
+            results.append(res)
         
         return results
     
