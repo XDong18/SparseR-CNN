@@ -69,6 +69,7 @@ def mask_rcnn_loss(pred_mask_logits: torch.Tensor, instances: List[Instances], v
         gt_masks.append(gt_masks_per_image)
 
     if len(gt_masks) == 0:
+        print('!!!! no gt_masks!!!')
         return pred_mask_logits.sum() * 0
 
     gt_masks = cat(gt_masks, dim=0)
@@ -108,10 +109,10 @@ def mask_rcnn_loss(pred_mask_logits: torch.Tensor, instances: List[Instances], v
             vis_mask = torch.stack([vis_mask] * 3, axis=0)
             storage.put_image(name + f" ({idx})", vis_mask)
     
-    print('!!!pin3\n', pred_mask_logits.size(), '\n!!!pin3')
+    # print('!!!pin3\n', pred_mask_logits.size(), '\n!!!pin3')
     mask_loss = F.binary_cross_entropy_with_logits(pred_mask_logits, gt_masks, reduction="mean")
-    print('!!!pin4\n', pred_mask_logits[0], '\n!!!pin4')
-    print('!!!pin5\n', gt_masks[0], '\n!!!pin5')
+    # print('!!!pin4\n', pred_mask_logits[0], '\n!!!pin4')
+    # print('!!!pin5\n', gt_masks[0], '\n!!!pin5')
     return mask_loss
 
 
