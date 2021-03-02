@@ -203,9 +203,13 @@ class SparseRCNN(nn.Module):
                                          for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
 
             loss_dict, match_indices = self.criterion(output, targets)
+            print('!!!pin1\n', loss_dict.keys(), '\n!!!pin1')
+
 
             #TODO #4 mask loss update
             loss_dict.update(self.mask_head(mask_features, instances_fg))
+            print('!!!pin2\n', loss_dict.keys(), '\n!!!pin2')
+
 
             weight_dict = self.criterion.weight_dict
             for k in loss_dict.keys():
