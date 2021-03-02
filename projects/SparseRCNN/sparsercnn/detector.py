@@ -177,6 +177,7 @@ class SparseRCNN(nn.Module):
         list_boxes = []
 
         #TODO #3 mask forward
+        print('!!! pin3\n', bboxes.size(), '\n!!!pin3')
         for bboxes_per_image in bboxes:
             list_boxes.append(Boxes(bboxes_per_image))
 
@@ -186,12 +187,16 @@ class SparseRCNN(nn.Module):
         mask_features = self.mask_pooler(features, list_boxes)
         print('!!! pin2\n', mask_features.size(), '\n!!!pin2')
         proposal_list_instances = self.boxes2list_instances(bboxes, images.image_sizes)
+        print('!!! pin4\n', len(proposal_list_instances), proposal_list_instances[0].size(), '\n!!!pin4')
 
         if self.training:
             #TODO #3 mask forward
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
             proposals_gt = self.label_and_sample_proposals(proposal_list_instances, gt_instances)
+            print('!!! pin5\n', len(proposals_gt), len(proposals_gt[0]), '\n!!!pin5')
+
             instances_fg, _ = select_foreground_proposals(proposals_gt, self.num_classes)
+            print('!!! pin6\n', len(instances_fg), len(instances_fg[0]), '\n!!!pin5')
             
             targets = self.prepare_targets(gt_instances)
             if self.deep_supervision:
