@@ -187,7 +187,7 @@ class SparseRCNN(nn.Module):
         mask_features = self.mask_pooler(features, list_boxes)
         print('!!! pin2\n', mask_features.size(), '\n!!!pin2')
         proposal_list_instances = self.boxes2list_instances(bboxes, images.image_sizes)
-        print('!!! pin4\n', len(proposal_list_instances), proposal_list_instances[0].size(), '\n!!!pin4')
+        print('!!! pin4\n', len(proposal_list_instances), len(proposal_list_instances[0]), '\n!!!pin4')
 
         if self.training:
             #TODO #3 mask forward
