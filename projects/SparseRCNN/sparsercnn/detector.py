@@ -174,17 +174,14 @@ class SparseRCNN(nn.Module):
 
         # Prediction.
         outputs_class, outputs_coord, bboxes = self.head(features, proposal_boxes, self.init_proposal_features.weight)
-        list_boxes = []
 
         #TODO #3 mask forward
         print('!!! pin3\n', bboxes.size(), '\n!!!pin3')
-        for bboxes_per_image in bboxes:
-            list_boxes.append(Boxes(bboxes_per_image))
 
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
 
         #TODO #3 mask forward
-        mask_features = self.mask_pooler(features, list_boxes)
+        
         print('!!! pin2\n', mask_features.size(), '\n!!!pin2')
         proposal_list_instances = self.boxes2list_instances(bboxes, images.image_sizes)
         print('!!! pin4\n', len(proposal_list_instances), len(proposal_list_instances[0]), '\n!!!pin4')
@@ -196,6 +193,8 @@ class SparseRCNN(nn.Module):
             print('!!! pin5\n', len(proposals_gt), len(proposals_gt[0]), '\n!!!pin5')
 
             instances_fg, _ = select_foreground_proposals(proposals_gt, self.num_classes)
+            boxes_fg = [x.proposal_boxes for x in instances_fg]
+            mask_features = self.mask_pooler(features, boxes_fg)
             print('!!! pin6\n', len(instances_fg), len(instances_fg[0]), '\n!!!pin5')
             
             targets = self.prepare_targets(gt_instances)
