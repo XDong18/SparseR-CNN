@@ -222,6 +222,11 @@ class SparseRCNN(nn.Module):
             box_pred = output["pred_boxes"]
             results = self.inference(box_cls, box_pred, images.image_sizes)
             #TODO #5 mask inference
+            boxes_list = []
+            for boxes_per_image in bboxes:
+                boxes_list.append(Boxes(boxes_per_image))
+                
+            mask_features = self.mask_pooler(features, boxes_list)
             self.mask_head(mask_features, results)
 
             processed_results = []
