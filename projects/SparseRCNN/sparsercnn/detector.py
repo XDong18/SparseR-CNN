@@ -165,7 +165,7 @@ class SparseRCNN(nn.Module):
         for f in self.in_features:
             feature = src[f]
             features.append(feature)
-        print('!!! pin1\n', len(features), features[0].size(), '\n!!!pin1')
+        # print('!!! pin1\n', len(features), features[0].size(), '\n!!!pin1')
 
         # Prepare Proposals.
         proposal_boxes = self.init_proposal_boxes.weight.clone()
@@ -176,26 +176,26 @@ class SparseRCNN(nn.Module):
         outputs_class, outputs_coord, bboxes = self.head(features, proposal_boxes, self.init_proposal_features.weight)
 
         #TODO #3 mask forward
-        print('!!! pin3\n', bboxes.size(), '\n!!!pin3')
+        # print('!!! pin3\n', bboxes.size(), '\n!!!pin3')
 
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
 
         #TODO #3 mask forward
         
-        print('!!! pin2\n', mask_features.size(), '\n!!!pin2')
+        # print('!!! pin2\n', mask_features.size(), '\n!!!pin2')
         proposal_list_instances = self.boxes2list_instances(bboxes, images.image_sizes)
-        print('!!! pin4\n', len(proposal_list_instances), len(proposal_list_instances[0]), '\n!!!pin4')
+        # print('!!! pin4\n', len(proposal_list_instances), len(proposal_list_instances[0]), '\n!!!pin4')
 
         if self.training:
             #TODO #3 mask forward
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
             proposals_gt = self.label_and_sample_proposals(proposal_list_instances, gt_instances)
-            print('!!! pin5\n', len(proposals_gt), len(proposals_gt[0]), '\n!!!pin5')
+            # print('!!! pin5\n', len(proposals_gt), len(proposals_gt[0]), '\n!!!pin5')
 
             instances_fg, _ = select_foreground_proposals(proposals_gt, self.num_classes)
             boxes_fg = [x.proposal_boxes for x in instances_fg]
             mask_features = self.mask_pooler(features, boxes_fg)
-            print('!!! pin6\n', len(instances_fg), len(instances_fg[0]), '\n!!!pin5')
+            # print('!!! pin6\n', len(instances_fg), len(instances_fg[0]), '\n!!!pin6')
             
             targets = self.prepare_targets(gt_instances)
             if self.deep_supervision:
