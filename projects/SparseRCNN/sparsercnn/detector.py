@@ -383,8 +383,9 @@ class SparseRCNN(nn.Module):
             match_quality_matrix = pairwise_iou(
                 targets_per_image.gt_boxes, proposals_per_image.proposal_boxes
             )
-            print("match_quality_matrix:", match_quality_matrix)
+            # print("match_quality_matrix:", match_quality_matrix)
             matched_idxs, matched_labels = self.proposal_matcher(match_quality_matrix)
+            print("\nmatched\n", matched_idxs, '\n', matched_labels, "\nmatched\n")
             # sampled_idxs = matched_idxs
             gt_classes = targets_per_image.gt_classes[matched_idxs]
             gt_classes[matched_labels == 0] = self.num_classes
