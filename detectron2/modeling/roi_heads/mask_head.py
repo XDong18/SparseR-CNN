@@ -68,12 +68,13 @@ def mask_rcnn_loss(pred_mask_logits: torch.Tensor, instances: List[Instances], v
         # A tensor of shape (N, M, M), N=#instances in the image; M=mask_side_len
         gt_masks.append(gt_masks_per_image)
 
-    print("\nnumber of gt_masks\n", len(instances), len(gt_masks), "\nnumber of gt_masks\n")
+    # print("\nnumber of gt_masks\n", len(instances), len(gt_masks), "\nnumber of gt_masks\n")
     if len(gt_masks) == 0:
         # print('!!!! no gt_masks!!!')
         return pred_mask_logits.sum() * 0
 
     gt_masks = cat(gt_masks, dim=0)
+    print("\nnumber of gt_masks\n", len(instances), len(gt_masks), "\nnumber of gt_masks\n")
 
     if cls_agnostic_mask:
         pred_mask_logits = pred_mask_logits[:, 0]
