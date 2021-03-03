@@ -225,7 +225,7 @@ class SparseRCNN(nn.Module):
             boxes_list = []
             for boxes_per_image in bboxes:
                 boxes_list.append(Boxes(boxes_per_image))
-                
+
             mask_features = self.mask_pooler(features, boxes_list)
             self.mask_head(mask_features, results)
 
@@ -383,6 +383,7 @@ class SparseRCNN(nn.Module):
             match_quality_matrix = pairwise_iou(
                 targets_per_image.gt_boxes, proposals_per_image.proposal_boxes
             )
+            print("match_quality_matrix:", match_quality_matrix)
             matched_idxs, matched_labels = self.proposal_matcher(match_quality_matrix)
             # sampled_idxs = matched_idxs
             gt_classes = targets_per_image.gt_classes[matched_idxs]
