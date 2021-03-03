@@ -193,6 +193,7 @@ class SparseRCNN(nn.Module):
             # print('!!! pin5\n', len(proposals_gt), len(proposals_gt[0]), '\n!!!pin5')
 
             instances_fg, _ = select_foreground_proposals(proposals_gt, self.num_classes)
+            print('\ninstances_fg\n', len(proposals_gt), len(instances_fg), '\ninstances_fg\n')
             boxes_fg = [x.proposal_boxes for x in instances_fg]
             mask_features = self.mask_pooler(features, boxes_fg)
             # print('!!! pin6\n', len(instances_fg), len(instances_fg[0]), '\n!!!pin6')
@@ -390,6 +391,8 @@ class SparseRCNN(nn.Module):
             gt_classes = targets_per_image.gt_classes[matched_idxs]
             gt_classes[matched_labels == 0] = self.num_classes
             gt_classes[matched_labels == -1] = -1
+            print("\gt_classes\n", gt_classes, "\gt_classes\n")
+
             # sampled_idxs, gt_classes = self._sample_proposals(
             #     matched_idxs, matched_labels, targets_per_image.gt_classes
             # )
